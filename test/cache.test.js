@@ -17,10 +17,12 @@ test('cache property gets added to instance', (t) => {
     })
 })
 
-test('cache is usable - kill the flackyness using fastify.inject !!', (t) => {
-  t.plan(5)
+test('cache is usable - kill the flackyness using !!', (t) => {
+  t.plan(6)
 
   const instance = fastify()
+  t.teardown(() => instance.close())
+
   instance
     .register((i, o, n) => {
       i.addHook('onRequest', function (req, reply, done) {
@@ -54,7 +56,6 @@ test('cache is usable - kill the flackyness using fastify.inject !!', (t) => {
   instance.listen(0, (err) => {
     t.error(err)
 
-    instance.server.unref()
     instance.inject({
       method: 'GET',
       path: '/one'

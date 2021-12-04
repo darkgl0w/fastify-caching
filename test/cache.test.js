@@ -132,13 +132,14 @@ test('cache is usable with function as plugin default options input', (t) => {
 })
 
 test('getting cache item with error returns error', (t) => {
-  t.plan(1)
+  t.plan(4)
   const mockCache = {
     get: (info, callback) => callback(new Error('cache.get always errors')),
     set: (key, value, ttl, callback) => callback()
   }
 
   const instance = fastify()
+  t.teardown(() => instance.close())
   instance.register(plugin, { cache: mockCache })
 
   instance.get('/one', (req, reply) => {
@@ -157,27 +158,26 @@ test('getting cache item with error returns error', (t) => {
     })
   })
 
-  instance.listen(0, (err) => {
-    if (err) t.threw(err)
-    instance.server.unref()
-    const portNum = instance.server.address().port
-    const address = `http://127.0.0.1:${portNum}/one`
+  instance.listen((err) => {
+    t.error(err)
 
-    http
-      .get(address, (res) => {
-        const opts = {
-          host: '127.0.0.1',
-          port: portNum,
-          path: '/two',
-          headers: {
-            'if-none-match': '123456'
-          }
+    instance.inject({
+      method: 'GET',
+      path: '/one'
+    }, (err, response) => {
+      t.error(err)
+
+      instance.inject({
+        method: 'GET',
+        path: '/two',
+        headers: {
+          'if-none-match': '123456'
         }
-        http.get(opts, (res) => {
-          t.equal(res.statusCode, 500)
-        }).on('error', t.threw)
+      }, (err, response) => {
+        t.error(err)
+        t.equal(response.statusCode, 500)
       })
-      .on('error', t.threw)
+    })
   })
 })
 

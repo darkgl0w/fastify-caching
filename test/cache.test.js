@@ -53,7 +53,7 @@ test('cache is usable - kill the flackyness using !!', (t) => {
     })
   })
 
-  instance.listen(0, (err) => {
+  instance.listen((err) => {
     t.error(err)
 
     instance.inject({
@@ -74,57 +74,12 @@ test('cache is usable - kill the flackyness using !!', (t) => {
   })
 })
 
-test('cache is usable', (t) => {
-  t.plan(3)
-  const instance = fastify()
-  instance
-    .register((i, o, n) => {
-      i.addHook('onRequest', function (req, reply, done) {
-        t.notOk(i[Symbol.for('fastify-caching.registered')])
-        done()
-      })
-      n()
-    })
-    .register(plugin)
-
-  instance.addHook('onRequest', function (req, reply, done) {
-    t.equal(this[Symbol.for('fastify-caching.registered')], true)
-    done()
-  })
-
-  instance.get('/one', (req, reply) => {
-    instance.cache.set('one', { one: true }, 100, (err) => {
-      if (err) return reply.send(err)
-      reply.redirect('/two')
-    })
-  })
-
-  instance.get('/two', (req, reply) => {
-    instance.cache.get('one', (err, obj) => {
-      if (err) t.threw(err)
-      t.same(obj.item, { one: true })
-      reply.send()
-    })
-  })
-
-  instance.listen(0, (err) => {
-    if (err) t.threw(err)
-    instance.server.unref()
-    const portNum = instance.server.address().port
-    const address = `http://127.0.0.1:${portNum}/one`
-    http
-      .get(address, (res) => {
-        if (res.statusCode > 300 && res.statusCode < 400 && res.headers.location) {
-          http.get(`http://127.0.0.1:${portNum}${res.headers.location}`, (res) => {}).on('error', t.threw)
-        }
-      })
-      .on('error', t.threw)
-  })
-})
-
 test('cache is usable with function as plugin default options input', (t) => {
-  t.plan(3)
+  t.plan(6)
+
   const instance = fastify()
+  t.teardown(() => instance.close())
+
   instance
     .register((i, o, n) => {
       i.addHook('onRequest', function (req, reply, done) {
@@ -155,18 +110,24 @@ test('cache is usable with function as plugin default options input', (t) => {
     })
   })
 
-  instance.listen(0, (err) => {
-    if (err) t.threw(err)
-    instance.server.unref()
-    const portNum = instance.server.address().port
-    const address = `http://127.0.0.1:${portNum}/one`
-    http
-      .get(address, (res) => {
-        if (res.statusCode > 300 && res.statusCode < 400 && res.headers.location) {
-          http.get(`http://127.0.0.1:${portNum}${res.headers.location}`, (res) => { }).on('error', t.threw)
-        }
-      })
-      .on('error', t.threw)
+  instance.listen((err) => {
+    t.error(err)
+
+    instance.inject({
+      method: 'GET',
+      path: '/one'
+    }, (err, response) => {
+      t.error(err)
+
+      if (response.statusCode > 300 && response.statusCode < 400 && response.headers.location) {
+        instance.inject({
+          method: 'GET',
+          path: response.headers.location
+        }, (err, response) => {
+          t.error(err)
+        })
+      }
+    })
   })
 })
 

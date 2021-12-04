@@ -17,6 +17,62 @@ test('cache property gets added to instance', (t) => {
     })
 })
 
+test('cache is usable - kill the flackyness using fastify.inject !!', (t) => {
+  t.plan(5)
+
+  const instance = fastify()
+  instance
+    .register((i, o, n) => {
+      i.addHook('onRequest', function (req, reply, done) {
+        t.notOk(i[Symbol.for('fastify-caching.registered')])
+        done()
+      })
+      n()
+    })
+    .register(plugin)
+
+  instance.addHook('onRequest', function (req, reply, done) {
+    t.equal(this[Symbol.for('fastify-caching.registered')], true)
+    done()
+  })
+
+  instance.get('/one', (req, reply) => {
+    instance.cache.set('one', { one: true }, 100, (err) => {
+      if (err) return reply.send(err)
+      reply.redirect('/two')
+    })
+  })
+
+  instance.get('/two', (req, reply) => {
+    instance.cache.get('one', (err, obj) => {
+      if (err) t.threw(err)
+      t.same(obj.item, { one: true })
+      reply.send()
+    })
+  })
+
+  instance.listen(0, (err) => {
+    if (err) t.threw(err)
+
+    instance.server.unref()
+    instance.inject({
+      method: 'GET',
+      path: '/one'
+    }, (err, response) => {
+      if (err) t.threw(err)
+
+      if (response.statusCode > 300 && response.statusCode < 400 && response.headers.location) {
+        instance.inject({
+          method: 'GET',
+          path: response.headers.location
+        }, (err, response) => {
+          if (err) t.threw(err)
+        })
+      }
+    })
+  })
+})
+
 test('cache is usable', (t) => {
   t.plan(3)
   const instance = fastify()

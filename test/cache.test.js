@@ -52,21 +52,21 @@ test('cache is usable - kill the flackyness using fastify.inject !!', (t) => {
   })
 
   instance.listen(0, (err) => {
-    if (err) t.threw(err)
+    t.error(err)
 
     instance.server.unref()
     instance.inject({
       method: 'GET',
       path: '/one'
     }, (err, response) => {
-      if (err) t.threw(err)
+      t.error(err)
 
       if (response.statusCode > 300 && response.statusCode < 400 && response.headers.location) {
         instance.inject({
           method: 'GET',
           path: response.headers.location
         }, (err, response) => {
-          if (err) t.threw(err)
+          t.error(err)
         })
       }
     })

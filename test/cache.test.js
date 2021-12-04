@@ -126,16 +126,18 @@ test('cache is usable with function as plugin default options input', async (t) 
   }
 })
 
-test('getting cache item with error returns error', (t) => {
-  t.plan(4)
+test('getting cache item with error returns error', async (t) => {
+  t.plan(1)
+
   const mockCache = {
     get: (info, callback) => callback(new Error('cache.get always errors')),
     set: (key, value, ttl, callback) => callback()
   }
 
   const fastify = Fastify()
+  await fastify.register(plugin, { cache: mockCache })
+
   t.teardown(fastify.close.bind())
-  fastify.register(plugin, { cache: mockCache })
 
   fastify.get('/one', (req, reply) => {
     fastify.cache.set('one', { one: true }, 1000, (err) => {
@@ -153,27 +155,21 @@ test('getting cache item with error returns error', (t) => {
     })
   })
 
-  fastify.listen((err) => {
-    t.error(err)
+  await fastify.listen()
 
-    fastify.inject({
-      method: 'GET',
-      path: '/one'
-    }, (err, response) => {
-      t.error(err)
-
-      fastify.inject({
-        method: 'GET',
-        path: '/two',
-        headers: {
-          'if-none-match': '123456'
-        }
-      }, (err, response) => {
-        t.error(err)
-        t.equal(response.statusCode, 500)
-      })
-    })
+  await fastify.inject({
+    method: 'GET',
+    path: '/one'
   })
+
+  const response = await fastify.inject({
+    method: 'GET',
+    path: '/two',
+    headers: {
+      'if-none-match': '123456'
+    }
+  })
+  t.equal(response.statusCode, 500)
 })
 
 test('etags get stored in cache', (t) => {

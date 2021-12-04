@@ -9,7 +9,6 @@ test('cache property gets added to instance', async (t) => {
   t.plan(2)
 
   const fastify = Fastify()
-
   await fastify.register(plugin)
   await fastify.ready()
 
@@ -21,21 +20,16 @@ test('cache is usable', async (t) => {
   t.plan(3)
 
   const fastify = Fastify()
-
   await fastify
     .register(async (instance, options) => {
-      instance.addHook('onRequest', function (req, reply, done) {
+      instance.addHook('onRequest', async function (req, reply) {
         t.notOk(instance[Symbol.for('fastify-caching.registered')])
-        done()
       })
     })
     .register(plugin)
 
-  t.teardown(fastify.close.bind(fastify))
-
-  fastify.addHook('onRequest', function (req, reply, done) {
+  fastify.addHook('onRequest', async function (req, reply) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
-    done()
   })
 
   fastify.get('/one', (req, reply) => {
@@ -78,18 +72,14 @@ test('cache is usable with function as plugin default options input', async (t) 
   const fastify = Fastify()
   await fastify
     .register(async (instance, options) => {
-      instance.addHook('onRequest', function (req, reply, done) {
+      instance.addHook('onRequest', async function (req, reply) {
         t.notOk(instance[Symbol.for('fastify-caching.registered')])
-        done()
       })
     })
     .register(plugin, () => () => { })
 
-  t.teardown(fastify.close.bind(fastify))
-
-  fastify.addHook('onRequest', function (req, reply, done) {
+  fastify.addHook('onRequest', async function (req, reply) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
-    done()
   })
 
   fastify.get('/one', (req, reply) => {
@@ -137,8 +127,6 @@ test('getting cache item with error returns error', async (t) => {
   const fastify = Fastify()
   await fastify.register(plugin, { cache: mockCache })
 
-  t.teardown(fastify.close.bind(fastify))
-
   fastify.get('/one', (req, reply) => {
     fastify.cache.set('one', { one: true }, 1000, (err) => {
       if (err) return reply.send(err)
@@ -178,8 +166,6 @@ test('etags get stored in cache', async (t) => {
   const fastify = Fastify()
   await fastify.register(plugin)
 
-  t.teardown(fastify.close.bind(fastify))
-
   fastify.get('/one', (req, reply) => {
     reply
       .etag('123456')
@@ -208,8 +194,6 @@ test('etag cache life is customizable', (t) => {
 
   const fastify = Fastify()
   fastify.register(plugin)
-
-  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', function (req, reply) {
     reply
@@ -249,8 +233,6 @@ test('returns response payload', async (t) => {
 
   const fastify = Fastify()
   await fastify.register(plugin)
-
-  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', (req, reply) => {
     reply

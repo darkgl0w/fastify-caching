@@ -31,7 +31,7 @@ test('cache is usable', async (t) => {
     })
     .register(plugin)
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.addHook('onRequest', function (req, reply, done) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
@@ -53,7 +53,7 @@ test('cache is usable', async (t) => {
     })
   })
 
-  await fastify.listen()
+  await fastify.ready()
 
   const response = await fastify.inject({
     method: 'GET',
@@ -85,7 +85,7 @@ test('cache is usable with function as plugin default options input', async (t) 
     })
     .register(plugin, () => () => { })
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.addHook('onRequest', function (req, reply, done) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
@@ -107,7 +107,7 @@ test('cache is usable with function as plugin default options input', async (t) 
     })
   })
 
-  await fastify.listen()
+  await fastify.ready()
 
   const response = await fastify.inject({
     method: 'GET',
@@ -137,7 +137,7 @@ test('getting cache item with error returns error', async (t) => {
   const fastify = Fastify()
   await fastify.register(plugin, { cache: mockCache })
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', (req, reply) => {
     fastify.cache.set('one', { one: true }, 1000, (err) => {
@@ -155,7 +155,7 @@ test('getting cache item with error returns error', async (t) => {
     })
   })
 
-  await fastify.listen()
+  await fastify.ready()
 
   await fastify.inject({
     method: 'GET',
@@ -178,7 +178,7 @@ test('etags get stored in cache', async (t) => {
   const fastify = Fastify()
   await fastify.register(plugin)
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', (req, reply) => {
     reply
@@ -186,7 +186,7 @@ test('etags get stored in cache', async (t) => {
       .send({ hello: 'world' })
   })
 
-  await fastify.listen()
+  await fastify.ready()
 
   await fastify.inject({
     method: 'GET',
@@ -209,7 +209,7 @@ test('etag cache life is customizable', (t) => {
   const fastify = Fastify()
   fastify.register(plugin)
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', function (req, reply) {
     reply
@@ -218,7 +218,7 @@ test('etag cache life is customizable', (t) => {
       .send({ hello: 'world' })
   })
 
-  fastify.listen((err) => {
+  fastify.ready((err) => {
     t.error(err)
 
     fastify.inject({
@@ -250,7 +250,7 @@ test('returns response payload', async (t) => {
   const fastify = Fastify()
   await fastify.register(plugin)
 
-  t.teardown(fastify.close.bind())
+  t.teardown(fastify.close.bind(fastify))
 
   fastify.get('/one', (req, reply) => {
     reply
@@ -258,7 +258,7 @@ test('returns response payload', async (t) => {
       .send({ hello: 'world' })
   })
 
-  await fastify.listen()
+  await fastify.ready()
 
   await fastify.inject({
     method: 'GET',

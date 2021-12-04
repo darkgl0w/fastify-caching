@@ -5,32 +5,33 @@ const plugin = require('../plugin')
 
 const Fastify = require('fastify')
 
-test('cache property gets added to instance', (t) => {
+test('cache property gets added to instance', async (t) => {
   t.plan(2)
+
   const fastify = Fastify()
-  fastify
-    .register(plugin)
-    .ready(() => {
-      t.ok(fastify.cache)
-      t.ok(fastify.cache.set)
-    })
+
+  await fastify.register(plugin)
+  await fastify.ready()
+
+  t.ok(fastify.cache)
+  t.ok(fastify.cache.set)
 })
 
-test('cache is usable - kill the flackyness using !!', (t) => {
-  t.plan(6)
+test('cache is usable', async (t) => {
+  t.plan(3)
 
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
 
-  fastify
-    .register((i, o, n) => {
-      i.addHook('onRequest', function (req, reply, done) {
-        t.notOk(i[Symbol.for('fastify-caching.registered')])
+  await fastify
+    .register(async (instance, options) => {
+      instance.addHook('onRequest', function (req, reply, done) {
+        t.notOk(instance[Symbol.for('fastify-caching.registered')])
         done()
       })
-      n()
     })
     .register(plugin)
+
+  t.teardown(fastify.close.bind())
 
   fastify.addHook('onRequest', function (req, reply, done) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
@@ -52,43 +53,40 @@ test('cache is usable - kill the flackyness using !!', (t) => {
     })
   })
 
-  fastify.listen((err) => {
-    t.error(err)
+  await fastify.listen()
 
-    fastify.inject({
-      method: 'GET',
-      path: '/one'
-    }, (err, response) => {
-      t.error(err)
-
-      if (response.statusCode > 300 && response.statusCode < 400 && response.headers.location) {
-        fastify.inject({
-          method: 'GET',
-          path: response.headers.location
-        }, (err, response) => {
-          t.error(err)
-        })
-      }
-    })
+  const response = await fastify.inject({
+    method: 'GET',
+    path: '/one'
   })
+
+  if (
+    response.statusCode > 300 &&
+    response.statusCode < 400 &&
+    response.headers.location
+  ) {
+    await fastify.inject({
+      method: 'GET',
+      path: response.headers.location
+    })
+  }
 })
 
-test('cache is usable with function as plugin default options input', (t) => {
-  t.plan(6)
+test('cache is usable with function as plugin default options input', async (t) => {
+  t.plan(3)
 
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
-
-  fastify
-    .register((i, o, n) => {
-      i.addHook('onRequest', function (req, reply, done) {
-        t.notOk(i[Symbol.for('fastify-caching.registered')])
+  await fastify
+    .register(async (instance, options) => {
+      instance.addHook('onRequest', function (req, reply, done) {
+        t.notOk(instance[Symbol.for('fastify-caching.registered')])
         done()
       })
-      n()
     })
     .register(plugin, () => () => { })
 
+  t.teardown(fastify.close.bind())
+
   fastify.addHook('onRequest', function (req, reply, done) {
     t.equal(this[Symbol.for('fastify-caching.registered')], true)
     done()
@@ -109,25 +107,23 @@ test('cache is usable with function as plugin default options input', (t) => {
     })
   })
 
-  fastify.listen((err) => {
-    t.error(err)
+  await fastify.listen()
 
-    fastify.inject({
-      method: 'GET',
-      path: '/one'
-    }, (err, response) => {
-      t.error(err)
-
-      if (response.statusCode > 300 && response.statusCode < 400 && response.headers.location) {
-        fastify.inject({
-          method: 'GET',
-          path: response.headers.location
-        }, (err, response) => {
-          t.error(err)
-        })
-      }
-    })
+  const response = await fastify.inject({
+    method: 'GET',
+    path: '/one'
   })
+
+  if (
+    response.statusCode > 300 &&
+    response.statusCode < 400 &&
+    response.headers.location
+  ) {
+    await fastify.inject({
+      method: 'GET',
+      path: response.headers.location
+    })
+  }
 })
 
 test('getting cache item with error returns error', (t) => {
@@ -138,7 +134,7 @@ test('getting cache item with error returns error', (t) => {
   }
 
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
+  t.teardown(fastify.close.bind())
   fastify.register(plugin, { cache: mockCache })
 
   fastify.get('/one', (req, reply) => {
@@ -183,7 +179,7 @@ test('getting cache item with error returns error', (t) => {
 test('etags get stored in cache', (t) => {
   t.plan(4)
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
+  t.teardown(fastify.close.bind())
   fastify.register(plugin)
 
   fastify.get('/one', (req, reply) => {
@@ -218,7 +214,7 @@ test('etags get stored in cache', (t) => {
 test('etag cache life is customizable', (t) => {
   t.plan(4)
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
+  t.teardown(fastify.close.bind())
   fastify.register(plugin)
 
   fastify.get('/one', function (req, reply) {
@@ -256,7 +252,7 @@ test('etag cache life is customizable', (t) => {
 test('returns response payload', (t) => {
   t.plan(4)
   const fastify = Fastify()
-  t.teardown(() => fastify.close())
+  t.teardown(fastify.close.bind())
   fastify.register(plugin)
 
   fastify.get('/one', (req, reply) => {

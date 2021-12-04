@@ -172,11 +172,13 @@ test('getting cache item with error returns error', async (t) => {
   t.equal(response.statusCode, 500)
 })
 
-test('etags get stored in cache', (t) => {
-  t.plan(4)
+test('etags get stored in cache', async (t) => {
+  t.plan(1)
+
   const fastify = Fastify()
+  await fastify.register(plugin)
+
   t.teardown(fastify.close.bind())
-  fastify.register(plugin)
 
   fastify.get('/one', (req, reply) => {
     reply
@@ -184,37 +186,34 @@ test('etags get stored in cache', (t) => {
       .send({ hello: 'world' })
   })
 
-  fastify.listen((err) => {
-    t.error(err)
+  await fastify.listen()
 
-    fastify.inject({
-      method: 'GET',
-      path: '/one'
-    }, (err, response) => {
-      t.error(err)
-
-      fastify.inject({
-        method: 'GET',
-        path: '/one',
-        headers: {
-          'if-none-match': '123456'
-        }
-      }, (err, response) => {
-        t.error(err)
-        t.equal(response.statusCode, 304)
-      })
-    })
+  await fastify.inject({
+    method: 'GET',
+    path: '/one'
   })
+
+  const response = await fastify.inject({
+    method: 'GET',
+    path: '/one',
+    headers: {
+      'if-none-match': '123456'
+    }
+  })
+  t.equal(response.statusCode, 304)
 })
 
 test('etag cache life is customizable', (t) => {
   t.plan(4)
+
   const fastify = Fastify()
-  t.teardown(fastify.close.bind())
   fastify.register(plugin)
+
+  t.teardown(fastify.close.bind())
 
   fastify.get('/one', function (req, reply) {
     reply
+      // We set a cache lifetime of 50 milliseconds
       .etag('123456', 50)
       .send({ hello: 'world' })
   })
@@ -225,11 +224,11 @@ test('etag cache life is customizable', (t) => {
     fastify.inject({
       method: 'GET',
       path: '/one'
-    }, (err, response) => {
+    }, (err, _response) => {
       t.error(err)
 
-      // We wait 150 milliseconds that the cache expires
-      setTimeout(() => {
+      // We wait 70 milliseconds that the cache expires
+      setTimeout(async () => {
         fastify.inject({
           method: 'GET',
           path: '/one',
@@ -240,16 +239,18 @@ test('etag cache life is customizable', (t) => {
           t.error(err)
           t.equal(response.statusCode, 200)
         })
-      }, 150)
+      }, 70)
     })
   })
 })
 
-test('returns response payload', (t) => {
-  t.plan(4)
+test('returns response payload', async (t) => {
+  t.plan(1)
+
   const fastify = Fastify()
+  await fastify.register(plugin)
+
   t.teardown(fastify.close.bind())
-  fastify.register(plugin)
 
   fastify.get('/one', (req, reply) => {
     reply
@@ -257,23 +258,17 @@ test('returns response payload', (t) => {
       .send({ hello: 'world' })
   })
 
-  fastify.listen((err) => {
-    t.error(err)
+  await fastify.listen()
 
-    fastify.inject({
-      method: 'GET',
-      path: '/one'
-    }, (err, response) => {
-      t.error(err)
-
-      fastify.inject({
-        method: 'GET',
-        path: '/one'
-      }, (err, response) => {
-        t.error(err)
-
-        t.same(JSON.parse(response.payload), { hello: 'world' })
-      })
-    })
+  await fastify.inject({
+    method: 'GET',
+    path: '/one'
   })
+
+  const response = await fastify.inject({
+    method: 'GET',
+    path: '/one'
+  })
+
+  t.same(JSON.parse(response.payload), { hello: 'world' })
 })

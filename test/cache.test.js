@@ -32,7 +32,7 @@ test('cache is usable', async (t) => {
   })
 
   fastify.get('/one', (req, reply) => {
-    fastify.cache.set('one', { one: true }, 100, (err) => {
+    fastify.cache.set('one', { one: true }, 500, (err) => {
       if (err) return reply.send(err)
       reply.redirect('/two')
     })
@@ -81,7 +81,7 @@ test('cache is usable with function as plugin default options input', async (t) 
   })
 
   fastify.get('/one', (req, reply) => {
-    fastify.cache.set('one', { one: true }, 100, (err) => {
+    fastify.cache.set('one', { one: true }, 500, (err) => {
       if (err) return reply.send(err)
       reply.redirect('/two')
     })
